@@ -6,6 +6,7 @@ path_to_tweet_csv = "tweets_csv_test.csv"
 SMILEY_PREFIX = '/SMILEY'
 HASHTAG_PREFIX = '/HASHTAG'
 URL_PREFIX = '/URL'
+MENTIONS_PREFIX = '/MENTION'
 TWEET_COLUMN_NAME = 'text'
 
 
@@ -28,7 +29,16 @@ def tweet_parsing(current_tweet = 'Preprocessor is #awesome 👍 https://github.
     if parser_tweet.urls:
         for url in parser_tweet.urls:
             url_str = url.match
-            current_tweet = current_tweet.replace(url_str, '{}{}'.format(URL_PREFIX, url_str))
+            # invert comment to include the url
+            #current_tweet = current_tweet.replace(url_str, '{}{}'.format(URL_PREFIX, url_str))
+            current_tweet = current_tweet.replace(url_str, '{}'.format(URL_PREFIX))
+
+    if parser_tweet.mentions:
+        for mention in parser_tweet.mentions:
+            mention_str = mention.match
+            # invert comment to include the url
+            #current_tweet = current_tweet.replace(mention_str, '{}{}'.format(MENTIONS_PREFIX, mention_str))
+            current_tweet = current_tweet.replace(mention_str, '{}'.format(MENTIONS_PREFIX))
 
     # cleaned tweet
     print(current_tweet)

@@ -1,9 +1,8 @@
+
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
 from keras.models import model_from_json
-
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-import tensorflow as tf
 from sqlalchemy import create_engine
 from data_preparation_for_the_net import *
 from sklearn.utils import shuffle
@@ -15,11 +14,10 @@ WORD_EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.sqlite')
 WORD_EMBEDDING_SIZE = 128
 
 
-def obtain_train_validation_dataset(input_data):
+def partion_dataset(input_data, train_perc=0.7, training_length=10):
+
     # todo input data
     aggregator = cleaning()
-    train_perc = 0.7
-    training_length = 10
     # features = features_labels_with_strings(aggregator, training_length)
     # fixed_length_shorter_makes_sense = 998 # 500
     # aggregator = aggregator[0:fixed_length_shorter_makes_sense]
@@ -45,6 +43,8 @@ def obtain_train_validation_dataset(input_data):
 
 def get_t128_italiannlp_embedding(tokenizer, vocab_size, max_words):
 
+    # t128 size: 1188949, 1027699 (lower)
+
     # load the whole embedding into memory
     sql_engine = create_engine(f"sqlite:///{WORD_EMBEDDING_PATH}")
     connection = sql_engine.raw_connection()
@@ -69,7 +69,6 @@ def train_validate_model(splitted_data, tokenizer, vocab_size, max_words):
 
     X_train, y_train, X_valid, y_valid = splitted_data
 
-    training_length = 10
     num_words = len(X_train) + 1
     print("train len {}, validation len {}".format(num_words, num_words + len(X_valid)))
     model = Sequential()
@@ -105,7 +104,7 @@ def train_validate_model(splitted_data, tokenizer, vocab_size, max_words):
     return model
 
 
-def model_test():
+def test_model():
     print("test")
     with open("models/model.json", "r") as json_file:
         loaded_model_json = json_file.read()

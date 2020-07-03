@@ -1,0 +1,6 @@
+pandas
+keras
+scikit-learn
+tensorflow
+sqlalchemy
+tweet-preprocessor

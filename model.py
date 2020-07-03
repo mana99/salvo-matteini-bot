@@ -3,18 +3,20 @@ from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
 from keras.models import model_from_json
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras import models
 import tensorflow as tf
-
+from sqlalchemy import create_engine
 from data_preparation_for_the_net import *
-
 from sklearn.utils import shuffle
-
-"""with open("models/model.h5", "w") as json_file:
-    json_file.write('')"""
+from os.path import join, dirname
 
 
-def obtain_train_validation_dataset():
+INPUT_DIR = join(dirname(__file__), 'shared')
+WORD_EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.sqlite')
+WORD_EMBEDDING_SIZE = 128
+
+
+def obtain_train_validation_dataset(input_data):
+    # todo input data
     aggregator = cleaning()
     train_perc = 0.7
     training_length = 10
@@ -41,20 +43,40 @@ def obtain_train_validation_dataset():
     return X_train, y_train, X_valid, y_valid
 
 
-def model_creation(X_train, y_train, X_valid, y_valid):
+def get_t128_italiannlp_embedding(tokenizer, vocab_size, max_words):
+
+    # load the whole embedding into memory
+    sql_engine = create_engine(f"sqlite:///{WORD_EMBEDDING_PATH}")
+    connection = sql_engine.raw_connection()
+    t128 = pd.read_sql(sql='select * from store --limit 100', con=connection)
+    # todo filter words in t.word_index
+    t128['key_lower'] = t128['key'].apply(str.lower)
+
+    # create a weight matrix for words in training docs
+    embedding_matrix = np.zeros((vocab_size, WORD_EMBEDDING_SIZE))
+    for word, i in tokenizer.word_index.items():
+        res = t128[t128['key_lower'] == word.lower()]
+        if len(res) == 1:
+            embedding_matrix[i] = res.drop(['key', 'key_lower', 'ranking'], axis=1).values[0]
+
+    # we do want to update the learned word weights in this model, therefore we will set the trainable attribute for
+    # the model to be True.
+    return Embedding(input_dim=vocab_size, output_dim=WORD_EMBEDDING_SIZE, input_length=max_words,
+                     weights=[embedding_matrix], trainable=True, mask_zero=True)
+
+
+def train_validate_model(splitted_data, tokenizer, vocab_size, max_words):
+
+    X_train, y_train, X_valid, y_valid = splitted_data
 
     training_length = 10
     num_words = len(X_train) + 1
     print("train len {}, validation len {}".format(num_words, num_words + len(X_valid)))
     model = Sequential()
     # Embedding layer
-    model.add(
-        Embedding(input_dim=num_words,
-                  input_length=training_length,
-                  output_dim=100,
-                  # weights=[embedding_matrix],
-                  trainable=False,
-                  mask_zero=True))
+    model.add(get_t128_italiannlp_embedding(tokenizer=tokenizer,
+                                            vocab_size=vocab_size,
+                                            max_words=max_words))
     # Masking layer for pre-trained embeddings
     model.add(Masking(mask_value=0.0))
     # Recurrent layer
@@ -80,19 +102,7 @@ def model_creation(X_train, y_train, X_valid, y_valid):
                         validation_data=(X_valid, y_valid))
     print("history is : \n{}".format(history))
 
-    ####### SAVE MODEL #########
-    model_json = model.to_json()
-    with open("models/model.json", "w") as json_file:
-        json_file.write(model_json)
-
-    model.save_weights("models/model.h5")
-    print("Saved model to disk")
-    ############################
-
-    # print()
-    # Load in model and evaluate on validation data
-    # model = tf.keras.models.load_model('../models/model.h5')  # load_model('../models/model.h5')
-    model.evaluate(X_valid, y_valid)
+    return model
 
 
 def model_test():
@@ -124,12 +134,3 @@ def model_test():
         input_phrase += seq_dict[pred]
     print(input_phrase)
     """
-
-
-def main():
-    model = model_creation()
-    model_test()
-
-
-if __name__ == '__main__':
-    main()

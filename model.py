@@ -1,5 +1,6 @@
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
+from keras.models import model_from_json
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras import models
@@ -40,15 +41,9 @@ def obtain_train_validation_dataset():
     return X_train, y_train, X_valid, y_valid
 
 
-def model_creation():
-    #####  CREATE TRAIN DATASET ######
-
-    X_train, y_train, X_valid, y_valid = obtain_train_validation_dataset()
-    print("created X,Y sets")
-    ###################################
+def model_creation(X_train, y_train, X_valid, y_valid):
 
     training_length = 10
-
     num_words = len(X_train) + 1
     print("train len {}, validation len {}".format(num_words, num_words + len(X_valid)))
     model = Sequential()
@@ -102,7 +97,6 @@ def model_creation():
 
 def model_test():
     print("test")
-    from keras.models import model_from_json
     with open("models/model.json", "r") as json_file:
         loaded_model_json = json_file.read()
         loaded_model = model_from_json(loaded_model_json)

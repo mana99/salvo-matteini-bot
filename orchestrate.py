@@ -8,7 +8,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Embedding
 from sqlalchemy import create_engine
 
-from rnn_model import obtain_train_validation_dataset, model_creation, model_test
+from model import obtain_train_validation_dataset, model_creation, model_test
 
 # https://machinelearningmastery.com/use-word-embedding-layers-deep-learning-keras/
 # http://www.italianlp.it/resources/italian-word-embeddings/

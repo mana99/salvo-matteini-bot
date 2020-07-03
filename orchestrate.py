@@ -58,8 +58,10 @@ for word, i in t.word_index.items():
     if len(res) == 1:
         embedding_matrix[i] = res.drop(['key', 'key_lower', 'ranking'], axis=1).values[0]
 
+# we do want to update the learned word weights in this model, therefore we will set the trainable attribute for
+# the model to be True.
 e = Embedding(input_dim=vocab_size, output_dim=WORD_EMBEDDING_SIZE, input_length=max_length,
-              weights=[embedding_matrix], trainable=False)
+              weights=[embedding_matrix], trainable=True, mask_zero=True)
 
 # todo partitioning
 # X_train, y_train, X_valid, y_valid = obtain_train_validation_dataset(padded_encoded_tweets)

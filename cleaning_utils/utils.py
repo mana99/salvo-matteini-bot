@@ -2,7 +2,7 @@ import preprocessor as p
 import csv
 import pandas as pd
 
-path_to_tweet_csv = "tweets_csv_test.csv"
+path_to_tweet_csv = "tweets/tweets_csv_test.csv"
 SMILEY_PREFIX = '/SMILEY'
 HASHTAG_PREFIX = '/HASHTAG'
 URL_PREFIX = '/URL'

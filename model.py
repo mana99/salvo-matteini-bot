@@ -1,4 +1,6 @@
 
+import logging
+
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
 from keras.models import model_from_json
@@ -8,29 +10,31 @@ from data_preparation_for_the_net import *
 from sklearn.utils import shuffle
 from os.path import join, dirname
 
+from execute import MODEL_PATH
 
 INPUT_DIR = join(dirname(__file__), 'shared')
 WORD_EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.sqlite')
 WORD_EMBEDDING_SIZE = 128
 
+logger = logging.getLogger(__name__)
 
-def partion_dataset(input_data, train_perc=0.7, training_length=10):
 
-    # todo input data
-    aggregator = cleaning()
-    # features = features_labels_with_strings(aggregator, training_length)
-    # fixed_length_shorter_makes_sense = 998 # 500
-    # aggregator = aggregator[0:fixed_length_shorter_makes_sense]
+def partion_dataset(features, labels, train_perc=0.7, random_state=None, training_length=10):
 
-    aggregator_integers = integers_conversion(aggregator)
-    features, labels = features_labels(aggregator_integers,
-                                       training_length)  # check if the features should be like these
-    print(features, labels)
-
-    label_array = create_one_hot_encoding(features, labels)
+    # aggregator = cleaning()
+    # # features = features_labels_with_strings(aggregator, training_length)
+    # # fixed_length_shorter_makes_sense = 998 # 500
+    # # aggregator = aggregator[0:fixed_length_shorter_makes_sense]
+    #
+    # aggregator_integers = integers_conversion(aggregator)
+    # features, labels = features_labels(aggregator_integers,
+    #                                    training_length)  # check if the features should be like these
+    # print(features, labels)
+    #
+    # label_array = create_one_hot_encoding(features, labels)
 
     # it mantains the same shuffling order for both arrays
-    shuffled_features, shuffled_labels = shuffle(features, labels, random_state=0)
+    shuffled_features, shuffled_labels = shuffle(features, labels, random_state=random_state)
 
     train_index = int(len(shuffled_features) * train_perc)
     X_train = shuffled_features[:train_index]
@@ -41,23 +45,33 @@ def partion_dataset(input_data, train_perc=0.7, training_length=10):
     return X_train, y_train, X_valid, y_valid
 
 
+# https://machinelearningmastery.com/use-word-embedding-layers-deep-learning-keras/
+# http://www.italianlp.it/resources/italian-word-embeddings/
+
 def get_t128_italiannlp_embedding(tokenizer, vocab_size, max_words):
 
     # t128 size: 1188949, 1027699 (lower)
 
-    # load the whole embedding into memory
-    sql_engine = create_engine(f"sqlite:///{WORD_EMBEDDING_PATH}")
-    connection = sql_engine.raw_connection()
-    t128 = pd.read_sql(sql='select * from store --limit 100', con=connection)
-    # todo filter words in t.word_index
-    t128['key_lower'] = t128['key'].apply(str.lower)
-
     # create a weight matrix for words in training docs
     embedding_matrix = np.zeros((vocab_size, WORD_EMBEDDING_SIZE))
+
+    # load the whole embedding into memory
+    # takes a while... (~1-2 min)
+    logger.info("Loading pre-trained word embedding in memory (~1-2 mins)...")
+    with open(join(INPUT_DIR, 'twitter128.json'), 'r') as fin:
+        t128 = json.load(fin)
+
+    logger.info("Building embedding matrix...")
     for word, i in tokenizer.word_index.items():
-        res = t128[t128['key_lower'] == word.lower()]
-        if len(res) == 1:
-            embedding_matrix[i] = res.drop(['key', 'key_lower', 'ranking'], axis=1).values[0]
+        embedding_matrix[i] = t128.get(word, list(np.random.choice([1, -1]) * np.random.rand(WORD_EMBEDDING_SIZE+1)))[:-1]
+
+    # sql_engine = create_engine(f"sqlite:///{WORD_EMBEDDING_PATH}")
+    # connection = sql_engine.raw_connection()
+    # for word, i in tokenizer.word_index.items():
+    #     res = t128[t128['key_lower'] == word.lower()]  # troppo lento
+    #     res = pd.read_sql(sql=f'select * from store where key = "{word}"', con=connection)
+    #     if len(res) == 1:
+    #         embedding_matrix[i] = res.drop(['key', 'ranking'], axis=1).values[0]
 
     # we do want to update the learned word weights in this model, therefore we will set the trainable attribute for
     # the model to be True.
@@ -65,12 +79,9 @@ def get_t128_italiannlp_embedding(tokenizer, vocab_size, max_words):
                      weights=[embedding_matrix], trainable=True, mask_zero=True)
 
 
-def train_validate_model(splitted_data, tokenizer, vocab_size, max_words):
+def train_validate_model(X_train, y_train, X_valid, y_valid, *, tokenizer, vocab_size, max_words):
 
-    X_train, y_train, X_valid, y_valid = splitted_data
-
-    num_words = len(X_train) + 1
-    print("train len {}, validation len {}".format(num_words, num_words + len(X_valid)))
+    print("train len {}, validation len {}".format(len(X_train), len(X_valid)))
     model = Sequential()
     # Embedding layer
     model.add(get_t128_italiannlp_embedding(tokenizer=tokenizer,
@@ -85,21 +96,21 @@ def train_validate_model(splitted_data, tokenizer, vocab_size, max_words):
     # Dropout for regularization
     model.add(Dropout(0.5))
     # Output layer
-    model.add(Dense(num_words, activation='softmax'))
+    model.add(Dense(len(X_train) + 1, activation='softmax'))
     # Compile the model
     # model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     # Create callbacks
     early_stopping = EarlyStopping(monitor='val_loss', patience=5)
-    model_checkpoint = ModelCheckpoint('models/model.h5', save_best_only=True, save_weights_only=False)
+    model_checkpoint = ModelCheckpoint(MODEL_PATH, save_best_only=True, save_weights_only=False)
     callbacks = [early_stopping, model_checkpoint]
 
-    history = model.fit(X_train, y_train,
+    logger.info("Fitting model...")
+    model.fit(X_train, y_train,
                         batch_size=2048, epochs=150,
                         callbacks=callbacks,
                         validation_data=(X_valid, y_valid))
-    print("history is : \n{}".format(history))
 
     return model
 

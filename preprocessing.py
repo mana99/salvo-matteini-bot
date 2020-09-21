@@ -7,6 +7,9 @@ MAX_NWORDS_QUANTILE = 0.99
 INPUT_DIR = join(dirname(__file__), 'shared')
 TOKENIZER_PATH = join(INPUT_DIR, 'tokenizer.pickle')
 
+START_TOKEN, END_TOKEN = 0, -1
+# non usare -1 (errore in embedding layer)
+
 
 def preprocess(tweets_df):
 
@@ -25,7 +28,10 @@ def preprocess(tweets_df):
     vocab_size = len(t.word_index) + 1   # todo: constant
     encoded_tweets = t.texts_to_sequences(tweets)
 
-    # pad documents
-    padded_encoded_tweets = pad_sequences(encoded_tweets, maxlen=max_words, padding='post')
+    # # pad documents
+    # proc_encoded_tweets = pad_sequences(encoded_tweets, maxlen=max_words, padding='post')
 
-    return padded_encoded_tweets, t, vocab_size, max_words
+    proc_encoded_tweets = [[START_TOKEN] + tweet for tweet in encoded_tweets]
+
+    return proc_encoded_tweets, t, vocab_size, max_words
+

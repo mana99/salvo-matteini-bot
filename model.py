@@ -32,6 +32,7 @@ def train_validate_model(X_train, y_train, X_valid, y_valid, *, embedding_matrix
                         mask_zero=True))
     # Masking layer for pre-trained embeddings
     model.add(Masking(mask_value=0.0))
+    # https://keras.io/guides/understanding_masking_and_padding/
     # Recurrent layer
     model.add(LSTM(256))
     # Dropout for regularization
@@ -40,46 +41,17 @@ def train_validate_model(X_train, y_train, X_valid, y_valid, *, embedding_matrix
     model.add(Dense(y_train.shape[1], activation='softmax'))
 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # define the checkpoint
-    filepath="weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
+    filepath = "weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
     checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-    callbacks_list = [checkpoint]
+    # early_stopping = EarlyStopping(monitor='val_loss', patience=5)
+    callbacks = [checkpoint]
 
     # fit the model
-    model.fit(X_train, y_train, epochs=20, batch_size=128, callbacks=callbacks_list)
-#              validation_data=(X_valid, y_valid))
-
-
-    # Embedding layer
-    # model.add(get_t128_italiannlp_embedding(tokenizer=tokenizer,
-    #                                         vocab_size=vocab_size,
-    #                                         max_words=max_words))
-    # # Masking layer for pre-trained embeddings
-    # model.add(Masking(mask_value=0.0))
-    # # Recurrent layer
-    # model.add(LSTM(64, return_sequences=False, dropout=0.1, recurrent_dropout=0.1))
-    # # Fully connected layer
-    # model.add(Dense(64, activation='relu'))
-    # # Dropout for regularization
-    # model.add(Dropout(0.5))
-    # # Output layer
-    # model.add(Dense(vocab_size+1, activation='softmax'))
-    # todo restituire classificatore o embedding layer
-    # Compile the model
-    # model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    # model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    #
-    # # Create callbacks
-    # early_stopping = EarlyStopping(monitor='val_loss', patience=5)
-    # model_checkpoint = ModelCheckpoint(MODEL_PATH, save_best_only=True, save_weights_only=False)
-    # callbacks = [early_stopping, model_checkpoint]
-    #
-    # logger.info("Fitting model...")
-    # model.fit(X_train, y_train,
-    #                     batch_size=2048, epochs=150,
-    #                     callbacks=callbacks,
-    #                     validation_data=(X_valid, y_valid))
+    model.fit(X_train, y_train, epochs=20, batch_size=128, callbacks=callbacks,
+              validation_data=(X_valid, y_valid))
 
     return model
 

@@ -1,7 +1,13 @@
+import json
 
+import numpy
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from os.path import join, dirname
+
+from keras_preprocessing.text import Tokenizer
+
+from model import WORD_EMBEDDING_SIZE, logger, INPUT_DIR
 
 MAX_NWORDS_QUANTILE = 0.99
 INPUT_DIR = join(dirname(__file__), 'shared')
@@ -35,3 +41,33 @@ def preprocess(tweets_df):
 
     return proc_encoded_tweets, t, vocab_size, max_words
 
+
+# https://machinelearningmastery.com/use-word-embedding-layers-deep-learning-keras/
+# http://www.italianlp.it/resources/italian-word-embeddings/
+
+def get_t128_italiannlp_embedding(tokenizer: Tokenizer, vocab_size: int) -> np.array:
+
+    # t128 size: 1188949, 1027699 (lower)
+
+    # create a weight matrix for words in training docs
+    embedding_matrix = np.zeros((vocab_size, WORD_EMBEDDING_SIZE))
+
+    # load the whole embedding into memory
+    # takes a while... (~1-2 min)
+    logger.info("Loading pre-trained word embedding in memory (~1-2 mins)...")
+    with open(join(INPUT_DIR, 'twitter128.json'), 'r') as fin:
+        t128 = json.load(fin)
+
+    logger.info("Building embedding matrix...")
+    for word, i in tokenizer.word_index.items():
+        embedding_matrix[i] = t128.get(word, list(np.random.choice([1, -1]) * np.random.rand(WORD_EMBEDDING_SIZE+1)))[:-1]
+
+    # sql_engine = create_engine(f"sqlite:///{WORD_EMBEDDING_PATH}")
+    # connection = sql_engine.raw_connection()
+    # for word, i in tokenizer.word_index.items():
+    #     res = t128[t128['key_lower'] == word.lower()]  # troppo lento
+    #     res = pd.read_sql(sql=f'select * from store where key = "{word}"', con=connection)
+    #     if len(res) == 1:
+    #         embedding_matrix[i] = res.drop(['key', 'ranking'], axis=1).values[0]
+
+    return embedding_matrix

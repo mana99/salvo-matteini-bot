@@ -13,12 +13,14 @@ from keras.utils import np_utils
 from sklearn.utils import shuffle
 from model import train_validate_model, test_model
 from keras.models import load_model
-from preprocessing import preprocess
+from preprocessing import preprocess, get_t128_italiannlp_embedding
+
+from keras_preprocessing.text import Tokenizer
 
 
 INPUT_DIR = join(dirname(__file__), 'shared')
 INPUT_PATH = join(INPUT_DIR, 'tweets.csv')
-TOKENIZER_PATH = join(INPUT_DIR, 'tokenizer.pickle')
+EMBEDDING_PATH = join(INPUT_DIR, 'embedding.pickle')
 MODEL_PATH = join(INPUT_DIR, 'model.h5')
 TRAIN_PERC = 0.7
 RANDOM_STATE = 1337
@@ -57,7 +59,7 @@ def get_features_labels(proc_tweets, n_vocab, seq_length):
     # normalize
     X = X / float(n_vocab)
     # one hot encode the output variable
-    y = np_utils.to_categorical(dataY)
+    y = np_utils.to_categorical(dataY, num_classes=vocab_size)
 
     return X, y
 
@@ -87,11 +89,16 @@ if __name__ == '__main__':
 
     # Import
     tweets: pd.DataFrame = import_data(INPUT_PATH)
+    logger.info(tweets.shape)
 
     # Preprocessing
-    processed_tweets, t, vocab_size, max_words = preprocess(tweets)
-    # with open(TOKENIZER_PATH, 'wb') as fout:
-    #     pickle.dump(t, fout)
+    processed_tweets, tokenizer, vocab_size, max_words = preprocess(tweets)
+
+    # embedding_matrix = get_t128_italiannlp_embedding(tokenizer=tokenizer, vocab_size=vocab_size)
+    # with open(EMBEDDING_PATH, 'wb') as fout:
+    #     pickle.dump(embedding_matrix, fout)
+    with open(EMBEDDING_PATH, 'rb') as fin:
+        embedding_matrix = pickle.load(fin)
 
     # Partitioning
     processed_tweets_train, processed_tweets_valid = partition_tweets(processed_tweets, TRAIN_PERC)
@@ -101,11 +108,7 @@ if __name__ == '__main__':
     X_valid, y_valid = get_features_labels(processed_tweets_valid, vocab_size, SEQ_LENGTH)
 
     # Train and validate model
-    model = train_validate_model(X_train, y_train, X_valid, y_valid,
-                                          tokenizer=t,
-                                          vocab_size=vocab_size,
-                                          max_words=max_words)
-
+    model = train_validate_model(X_train, y_train, X_valid, y_valid, embedding_matrix=embedding_matrix)
 
     # Save model
     model.save(MODEL_PATH)
@@ -121,3 +124,28 @@ if __name__ == '__main__':
     # todo score model
     score_output = test_model(model, X_valid[:SEQ_LENGTH])
 
+
+def partion_dataset(features, labels, train_perc=0.7, random_state=None, training_length=10):
+
+    # aggregator = cleaning()
+    # # features = features_labels_with_strings(aggregator, training_length)
+    # # fixed_length_shorter_makes_sense = 998 # 500
+    # # aggregator = aggregator[0:fixed_length_shorter_makes_sense]
+    #
+    # aggregator_integers = integers_conversion(aggregator)
+    # features, labels = features_labels(aggregator_integers,
+    #                                    training_length)  # check if the features should be like these
+    # print(features, labels)
+    #
+    # label_array = create_one_hot_encoding(features, labels)
+
+    # it mantains the same shuffling order for both arrays
+    shuffled_features, shuffled_labels = shuffle(features, labels, random_state=random_state)
+
+    train_index = int(len(shuffled_features) * train_perc)
+    X_train = shuffled_features[:train_index]
+    y_train = shuffled_labels[:train_index]
+    X_valid = shuffled_features[train_index:]
+    y_valid = shuffled_labels[train_index:]
+
+    return X_train, y_train, X_valid, y_valid

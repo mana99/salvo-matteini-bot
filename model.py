@@ -29,9 +29,9 @@ def train_validate_model(X_train, y_train, X_valid, y_valid, *, embedding_matrix
                         input_length=X_train.shape[1],
                         weights=[embedding_matrix],
                         trainable=True,
-                        mask_zero=True))
-    # Masking layer for pre-trained embeddings
-    model.add(Masking(mask_value=0.0))
+                        mask_zero=False))
+    # # Masking layer for pre-trained embeddings
+    # model.add(Masking(mask_value=0.0))
     # https://keras.io/guides/understanding_masking_and_padding/
     # Recurrent layer
     model.add(LSTM(256))

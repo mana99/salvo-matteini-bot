@@ -97,7 +97,7 @@ def partion_dataset(features, labels, train_perc=0.7, random_state=None, trainin
 if __name__ == '__main__':
 
     # Import
-    tweets: pd.DataFrame = import_data(INPUT_PATH, 1000)
+    tweets: pd.DataFrame = import_data(INPUT_PATH)
     logger.info(tweets.shape)
 
     # Preprocessing

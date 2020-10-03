@@ -41,7 +41,7 @@ def import_data(fn, n_max=None):
     #      print(chunk)
 
 
-def get_features_labels(tweets, n_vocab, seq_length):
+def get_features_labels(tweets, n_vocab, seq_length, embedding_matrix):
 
     tweets_flat = [token for tweet in tweets for token in tweet]
 
@@ -58,7 +58,9 @@ def get_features_labels(tweets, n_vocab, seq_length):
     # normalize
     X = X / float(n_vocab)
     # one hot encode the output variable
-    y = np_utils.to_categorical(y, num_classes=vocab_size)
+    # MemoryError: Unable to allocate 988. GiB for an array with shape (1962233, 135094) and data type float32
+    # y = np_utils.to_categorical(y, num_classes=vocab_size)
+    y = np.array([embedding_matrix[i] for i in y])
 
     return X, y
 
@@ -115,8 +117,8 @@ if __name__ == '__main__':
     tweets_train, tweets_valid = partition_tweets(tweets, TRAIN_PERC)
 
     # Get labels
-    X_train, y_train = get_features_labels(tweets_train, vocab_size, SEQ_LENGTH)
-    X_valid, y_valid = get_features_labels(tweets_valid, vocab_size, SEQ_LENGTH)
+    X_train, y_train = get_features_labels(tweets_train, vocab_size, SEQ_LENGTH, embedding_matrix)
+    X_valid, y_valid = get_features_labels(tweets_valid, vocab_size, SEQ_LENGTH, embedding_matrix)
 
     # Train and validate model
     model = train_validate_model(X_train, y_train, X_valid, y_valid, embedding_matrix=embedding_matrix)

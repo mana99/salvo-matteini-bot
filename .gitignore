@@ -6,3 +6,4 @@ tweets.csv
 notebooks/
 .ini
 volumes
+*.hdf5

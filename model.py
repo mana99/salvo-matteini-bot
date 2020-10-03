@@ -10,11 +10,11 @@ from data_preparation_for_the_net import *
 from sklearn.utils import shuffle
 from os.path import join, dirname
 
-from execute import MODEL_PATH
 
 INPUT_DIR = join(dirname(__file__), 'shared')
 WORD_EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.sqlite')
 WORD_EMBEDDING_SIZE = 128
+MODEL_PATH = join(INPUT_DIR, 'model.h5')
 
 logger = logging.getLogger(__name__)
 
@@ -73,66 +73,83 @@ def get_t128_italiannlp_embedding(tokenizer, vocab_size, max_words):
     #     if len(res) == 1:
     #         embedding_matrix[i] = res.drop(['key', 'ranking'], axis=1).values[0]
 
-    # we do want to update the learned word weights in this model, therefore we will set the trainable attribute for
-    # the model to be True.
-    return Embedding(input_dim=vocab_size, output_dim=WORD_EMBEDDING_SIZE, input_length=max_words,
-                     weights=[embedding_matrix], trainable=True, mask_zero=True)
+    return embedding_matrix
 
 
 def train_validate_model(X_train, y_train, X_valid, y_valid, *, tokenizer, vocab_size, max_words):
 
     print("train len {}, validation len {}".format(len(X_train), len(X_valid)))
     model = Sequential()
-    # Embedding layer
-    model.add(get_t128_italiannlp_embedding(tokenizer=tokenizer,
-                                            vocab_size=vocab_size,
-                                            max_words=max_words))
-    # Masking layer for pre-trained embeddings
-    model.add(Masking(mask_value=0.0))
+
+
+    # embedding_matrix = get_t128_italiannlp_embedding(tokenizer=tokenizer,
+    #                                                  vocab_size=vocab_size,
+    #                                                  max_words=max_words)
+    #
+    # model.add(Embedding(input_dim=(X_train.shape[1], X_train.shape[2]),
+    #                     output_dim=WORD_EMBEDDING_SIZE,
+    #                     input_length=max_words,
+    #                     weights=[embedding_matrix],
+    #                     trainable=True,
+    #                     mask_zero=True))
+    # # we do want to update the learned word weights in this model, therefore we will set the trainable attribute for
+    # # the model to be True.
+
+
     # Recurrent layer
-    model.add(LSTM(64, return_sequences=False, dropout=0.1, recurrent_dropout=0.1))
-    # Fully connected layer
-    model.add(Dense(64, activation='relu'))
+    model.add(LSTM(256, input_shape=(X_train.shape[1], X_train.shape[2])))
     # Dropout for regularization
-    model.add(Dropout(0.5))
+    model.add(Dropout(0.2))
     # Output layer
-    model.add(Dense(len(X_train) + 1, activation='softmax'))
+    model.add(Dense(y_train.shape[1], activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # define the checkpoint
+    filepath="weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
+    checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
+    callbacks_list = [checkpoint]
+    # fit the model
+    model.fit(X_train, y_train, epochs=20, batch_size=128, callbacks=callbacks_list)
+#              validation_data=(X_valid, y_valid))
+
+
+    # Embedding layer
+    # model.add(get_t128_italiannlp_embedding(tokenizer=tokenizer,
+    #                                         vocab_size=vocab_size,
+    #                                         max_words=max_words))
+    # # Masking layer for pre-trained embeddings
+    # model.add(Masking(mask_value=0.0))
+    # # Recurrent layer
+    # model.add(LSTM(64, return_sequences=False, dropout=0.1, recurrent_dropout=0.1))
+    # # Fully connected layer
+    # model.add(Dense(64, activation='relu'))
+    # # Dropout for regularization
+    # model.add(Dropout(0.5))
+    # # Output layer
+    # model.add(Dense(vocab_size+1, activation='softmax'))
+    # todo restituire classificatore o embedding layer
     # Compile the model
     # model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-
-    # Create callbacks
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5)
-    model_checkpoint = ModelCheckpoint(MODEL_PATH, save_best_only=True, save_weights_only=False)
-    callbacks = [early_stopping, model_checkpoint]
-
-    logger.info("Fitting model...")
-    model.fit(X_train, y_train,
-                        batch_size=2048, epochs=150,
-                        callbacks=callbacks,
-                        validation_data=(X_valid, y_valid))
+    # model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    #
+    # # Create callbacks
+    # early_stopping = EarlyStopping(monitor='val_loss', patience=5)
+    # model_checkpoint = ModelCheckpoint(MODEL_PATH, save_best_only=True, save_weights_only=False)
+    # callbacks = [early_stopping, model_checkpoint]
+    #
+    # logger.info("Fitting model...")
+    # model.fit(X_train, y_train,
+    #                     batch_size=2048, epochs=150,
+    #                     callbacks=callbacks,
+    #                     validation_data=(X_valid, y_valid))
 
     return model
 
 
-def test_model():
-    print("test")
-    with open("models/model.json", "r") as json_file:
-        loaded_model_json = json_file.read()
-        loaded_model = model_from_json(loaded_model_json)
+def test_model(loaded_model, start_word):
 
-    loaded_model.load_weights('models/model.h5')
+    # loaded_model.load_weights('models/model.h5')
 
-    to_pred = [14, 64, 16, 65, 41, 66, 44, 67, 68, 69]
-
-    seq_dict = read_dict(seq_dict_path)
-    input_phrase = ''
-    for pred in to_pred:
-        input_phrase += seq_dict[pred] + ' '
-
-    print(input_phrase)
-
-    to_pred = np.array([to_pred])
+    to_pred = np.array([start_word])
     predicted_result = loaded_model.predict(to_pred)
     print("predicted result is {}".format(predicted_result))
     input_phrase = ''

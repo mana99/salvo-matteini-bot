@@ -4,12 +4,10 @@ import logging
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Embedding, Masking
 from keras.callbacks import ModelCheckpoint
-from data_preparation_for_the_net import *
 from os.path import join, dirname
 
 INPUT_DIR = join(dirname(__file__), 'shared')
 WORD_EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.sqlite')
-WORD_EMBEDDING_SIZE = 128
 MODEL_PATH = join(INPUT_DIR, 'model.h5')
 
 logger = logging.getLogger(__name__)
@@ -86,19 +84,3 @@ def train_validate_model(X_train, y_train, X_valid, y_valid, *, embedding_matrix
     return model
 
 
-def test_model(loaded_model, start_word):
-
-    # loaded_model.load_weights('models/model.h5')
-
-    to_pred = np.array([start_word])
-    predicted_result = loaded_model.predict(to_pred)
-    print("predicted result is {}".format(predicted_result))
-    input_phrase = ''
-
-    ###########################
-    # prediction not integers #
-    """
-    for pred in predicted_result[0]:
-        input_phrase += seq_dict[pred]
-    print(input_phrase)
-    """

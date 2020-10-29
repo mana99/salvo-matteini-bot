@@ -46,6 +46,7 @@ def compile_model(X_train, y_train, *, embedding_matrix):
                         weights=[embedding_matrix],
                         trainable=False,
                         mask_zero=False))
+    # todo: embedding layer trainable and return
     # # Masking layer for pre-trained embeddings
     # model.add(Masking(mask_value=0.0))
     # https://keras.io/guides/understanding_masking_and_padding/

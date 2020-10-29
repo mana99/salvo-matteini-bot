@@ -61,7 +61,6 @@ def preprocess(tweets):
 
     # encode
 
-
     m, m2 = itertools.tee(m)
     t = nltk.RegexpTokenizer(r"[dnl]['´`]|\w+|\$[\d\.]+|\S+")
     tokenizer = Tokenizer(t)
@@ -145,7 +144,8 @@ def get_t128_italiannlp_embedding(tokenizer: Tokenizer, n_words: int) -> np.arra
     # t128 size: 1188949, 1027699 (lowercase)
 
     # create a weight matrix for words in training docs
-    embedding_matrix = np.zeros((n_words, 128))
+    # initialize as random and not to zeros to avoid cosine similarity issues
+    embedding_matrix = np.random.uniform(low=-1, high=1, size=(n_words, 128))
     # todo: constant size
 
     # load the whole embedding into memory
@@ -156,7 +156,9 @@ def get_t128_italiannlp_embedding(tokenizer: Tokenizer, n_words: int) -> np.arra
 
     logger.info("Building embedding matrix...")
     for word, i in tokenizer.word_index.items():
-        embedding_matrix[i] = t128.get(word, list(np.random.choice([1, -1]) * np.random.rand(128+1)))[:-1]
+        index = t128.get(word)
+        if index:
+            embedding_matrix[i] = index[:-1]
 
     # sql_engine = create_engine(f"sqlite:///{WORD_EMBEDDING_PATH}")
     # connection = sql_engine.raw_connection()

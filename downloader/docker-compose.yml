@@ -5,18 +5,17 @@ services:
     tty: true
     volumes:
       - ./app:/usr/local/app
-      - ./volumes/logs/cron.log:/var/log/cron.log
-    # command: >
-    #     sh -c "python download_tweets.py"
+#       - ./volumes/logs/cron.log:/var/log/cron.log
+#     command: >
+#         sh -c "python download_tweets.py"
   mongo:
     image: mongo:latest
     ports:
       - "27017-27019:27017-27019"
     volumes:
       - ./volumes/mongodata:/data/db
-      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
-      MONGO_INITDB_DATABASE: tweets
-
+#      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: admin
+#      MONGO_INITDB_ROOT_PASSWORD: admin
+#      MONGO_INITDB_DATABASE: tweets

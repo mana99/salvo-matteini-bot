@@ -117,7 +117,9 @@ def main():
         except tweepy.error.TweepError:
             on_max_requests()
 
-main()
+
+if __name__ == '__main__':
+    main()
 
 
 # import concurrent.futures

@@ -2,7 +2,8 @@ FROM python:3.7
 WORKDIR /usr/local/app/
 COPY ./requirements.txt requirements.txt
 RUN pip install -r requirements.txt
-CMD python download_tweets.py
+ENTRYPOINT ["python"]
+CMD ["app.py"]
 #RUN apt-get update && apt-get -y install cron
 #COPY ./cron /etc/cron.d/downloader
 #RUN chmod 0644 /etc/cron.d/downloader

@@ -1,8 +1,0 @@
-# m h  dom mon dow   command
-
-SHELL=/bin/bash
-PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin
-
- * 5 * * * sh -c "/usr/local/bin/python /usr/local/app/download_tweets.py" >> /var/log/cron.log 2>&1
-# An empty line is required at the end of this file for a valid cron file.
-

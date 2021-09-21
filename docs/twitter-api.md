@@ -7,6 +7,8 @@ in the past 7 days. Part of the 'public' set of APIs. [^1]
 
 Resource URL: https://api.twitter.com/1.1/search/tweets.json
 
+Auth method: OAuth 1.0
+
 Resource Information 
 
 * Response formats	JSON

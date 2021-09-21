@@ -1,0 +1,6 @@
+graft src
+include README* CHANGELOG*
+global-include *.conf requirements.txt
+global-exclude *.py[cod]
+prune notebooks
+prune volumes

@@ -107,61 +107,61 @@ def partition_tweets(tweets, train_valid_test):
 
 if __name__ == '__main__':
 
-    # with open(TOKENIZER_PATH, 'rb') as fin:
-    #     tokenizer = pickle.load(fin)
-    # with open(PREPROCESSED_TWEETS_PATH, 'rb') as fin:
-    #     tweets = pickle.load(fin)
-    # with open(EMBEDDING_MATRIX_PATH, 'rb') as fin:
-    #     embedding_matrix = pickle.load(fin)
-    # with open(SPLITTED_DATASETS_PATH, 'rb') as fin:
-    #     X_train, y_train, X_valid, y_valid, X_test, y_test, tweets_score = pickle.load(fin)
-    # model = load_model(MODEL_PATH)
+    with open(TOKENIZER_PATH, 'rb') as fin:
+        tokenizer = pickle.load(fin)
+    with open(PREPROCESSED_TWEETS_PATH, 'rb') as fin:
+        tweets = pickle.load(fin)
+    with open(EMBEDDING_MATRIX_PATH, 'rb') as fin:
+        embedding_matrix = pickle.load(fin)
+    with open(SPLITTED_DATASETS_PATH, 'rb') as fin:
+        X_train, y_train, X_valid, y_valid, X_test, y_test, tweets_score = pickle.load(fin)
+    model = load_model(MODEL_PATH)
 
-    # Import
-    print("Importing")
-    tweets = import_data(INPUT_PATH)
-
-    # Preprocessing
-    print("Preprocessing")
-    tweets_iterator, tokenizer = preprocess(tweets['full_text'])
-    with open(TOKENIZER_PATH, 'wb') as fout:
-        pickle.dump(tokenizer, fout)
-    vocab_size = len(tokenizer.word_index) + 1
-    tweets = list(tweets_iterator)
-    with open(PREPROCESSED_TWEETS_PATH, 'wb') as fout:
-        pickle.dump(tweets, fout)
-
-    # Create embedding matrix
-    print("Creating Embedding Matrix")
-    embedding_matrix = get_t128_italiannlp_embedding(tokenizer=tokenizer, n_words=vocab_size)
-    with open(EMBEDDING_PATH, 'wb') as fout:
-        pickle.dump(embedding_matrix, fout)
-
-    # Partitioning
-    print("Partitioning")
-    tweets_train, tweets_valid, tweets_test, tweets_score = partition_tweets(tweets, TRAIN_VALID_TEST_RATIO)
-
-    # Get labels
-    print("Generating labels")
-    X_train, y_train = get_features_labels(tweets_train, vocab_size, SEQ_LENGTH, embedding_matrix)
-    X_valid, y_valid = get_features_labels(tweets_valid, vocab_size, SEQ_LENGTH, embedding_matrix)
-    X_test, y_test = get_features_labels(tweets_test, vocab_size, SEQ_LENGTH, embedding_matrix)
-
-    with open(SPLITTED_DATASETS_PATH, 'wb') as fout:
-        pickle.dump((X_train, y_train, X_valid, y_valid, X_test, y_test, tweets_score), fout)
-
-    # Compile model
-    print("Build model")
-    model, callbacks = compile_model(X_train, y_train, embedding_matrix=embedding_matrix)
-
-    # # Train and validate model
-    print("Train and validate model")
-    model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=128, callbacks=callbacks,
-              validation_data=(X_valid, y_valid))
-
-    # # Save model
-    print("Saving final model to file")
-    model.save(MODEL_PATH)
+    # # Import
+    # print("Importing")
+    # tweets = import_data(INPUT_PATH)
+    #
+    # # Preprocessing
+    # print("Preprocessing")
+    # tweets_iterator, tokenizer = preprocess(tweets['full_text'])
+    # with open(TOKENIZER_PATH, 'wb') as fout:
+    #     pickle.dump(tokenizer, fout)
+    # vocab_size = len(tokenizer.word_index) + 1
+    # tweets = list(tweets_iterator)
+    # with open(PREPROCESSED_TWEETS_PATH, 'wb') as fout:
+    #     pickle.dump(tweets, fout)
+    #
+    # # Create embedding matrix
+    # print("Creating Embedding Matrix")
+    # embedding_matrix = get_t128_italiannlp_embedding(tokenizer=tokenizer, n_words=vocab_size)
+    # with open(EMBEDDING_PATH, 'wb') as fout:
+    #     pickle.dump(embedding_matrix, fout)
+    #
+    # # Partitioning
+    # print("Partitioning")
+    # tweets_train, tweets_valid, tweets_test, tweets_score = partition_tweets(tweets, TRAIN_VALID_TEST_RATIO)
+    #
+    # # Get labels
+    # print("Generating labels")
+    # X_train, y_train = get_features_labels(tweets_train, vocab_size, SEQ_LENGTH, embedding_matrix)
+    # X_valid, y_valid = get_features_labels(tweets_valid, vocab_size, SEQ_LENGTH, embedding_matrix)
+    # X_test, y_test = get_features_labels(tweets_test, vocab_size, SEQ_LENGTH, embedding_matrix)
+    #
+    # with open(SPLITTED_DATASETS_PATH, 'wb') as fout:
+    #     pickle.dump((X_train, y_train, X_valid, y_valid, X_test, y_test, tweets_score), fout)
+    #
+    # # Compile model
+    # print("Build model")
+    # model, callbacks = compile_model(X_train, y_train, embedding_matrix=embedding_matrix)
+    #
+    # # # Train and validate model
+    # print("Train and validate model")
+    # model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=128, callbacks=callbacks,
+    #           validation_data=(X_valid, y_valid))
+    #
+    # # # Save model
+    # print("Saving final model to file")
+    # model.save(MODEL_PATH)
 
     # Evaluate on validation data
     metrics_values = model.evaluate(X_test, y_test, verbose=0)

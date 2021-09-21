@@ -2,12 +2,13 @@ version: '3'
 services:
   python:
     build: .
+    env_file:
+      - .env
     tty: true
-    volumes:
-      - ./app:/usr/local/app
-#       - ./volumes/logs/cron.log:/var/log/cron.log
-#     command: >
-#         sh -c "python download_tweets.py"
+    # volumes:
+    #   - ./volumes/logs:/var/log
+    # command: >
+    #   salvo-matteini-etl
   mongo:
     image: mongo:latest
     ports:

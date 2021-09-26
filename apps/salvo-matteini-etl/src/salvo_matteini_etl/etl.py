@@ -30,10 +30,11 @@ MONGO_URL = environ["MONGO_URL"]
 # throttler
 throttler = Throttler(rate_limit=RATE_LIMIT, period=PERIOD)
 
+
 # @backoff.on_exception(backoff.expo, aiohttp.ClientError,
 #                       max_tries=5, max_time=60,
 #                       on_backoff=on_backoff_handler)
-async def extract(aiohttp_session, since_id):
+async def extract(aiohttp_session, since_id, max_tweets):
 
     query_params = {
         "q": "salvini -filter:media -filter:retweets -filter:native_video -filter:periscope "
@@ -42,7 +43,7 @@ async def extract(aiohttp_session, since_id):
         "lang": "it",
         "since_id": since_id,
         "tweet_mode": "extended",
-        "count": MAX_TWEETS
+        "count": max_tweets
     }
     q = SearchTweets(query_params)
 
@@ -53,13 +54,14 @@ async def extract(aiohttp_session, since_id):
     return j
 
 
-async def transform(j):
-    return j
+# async def transform(j):
+#     return j
 
 
-async def load(motor_client, j_):
+async def load(motor_client, tweet):
     coll = motor_client[MONGO_DB_NAME][MONGO_COLL_NAME]
-    await upsert_single(j_, coll)
+    upsert_res = await upsert_single(tweet, coll)
+    return upsert_res
 
 
 async def ETL(aiohttp_client: aiohttp.ClientSession,
@@ -72,25 +74,28 @@ async def ETL(aiohttp_client: aiohttp.ClientSession,
     :param since_id:
     :return:
     """
-    _j = await extract(aiohttp_client, since_id)
-    j = await transform(_j)
-    await load(motor_client, j)
-    return j
+    x_res = await extract(aiohttp_client, since_id=since_id, max_tweets=MAX_TWEETS)
+
+    for s in x_res["statuses"]:
+        # logger.debug(f"{s['id_str']} - @{s['user']['screen_name']:15s}: {s['full_text']}")
+        # t_res = await transform(s)
+        await load(motor_client=motor_client, tweet=s)
+
+    return len(x_res["statuses"]), x_res["search_metadata"]["max_id"]
 
 
 async def batch():
     last_tweet_id = 0
     motor_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL, 27017)
+    aiohttp_client = aiohttp.ClientSession()
     while True:
-        async with aiohttp.ClientSession() as aiohttp_client:
-            res = await ETL(aiohttp_client, motor_client, since_id=last_tweet_id)
-        if res["statuses"]:
-            last_tweet_id = res["search_metadata"]["max_id"]
-            new_tweets = len(res["statuses"])
-            logger.debug(f"+{new_tweets} tweet{'s' if new_tweets > 1 else ''}")
-            print('\n'.join(
-                    (f"@{r['user']['screen_name']:15s}:\t{r['full_text']}"
-                    for r in res['statuses'])
-            ))
+        _, last_tweet_id = await ETL(aiohttp_client, motor_client, since_id=last_tweet_id)
+    # await motor_client.close()
+    # await aiohttp_client.close()
+
+    # while True:
+    #     async with aiohttp.ClientSession() as aiohttp_client:
+    #         processed, last_tweet_id = await ETL(aiohttp_client, motor_client, since_id=last_tweet_id)
+
 
 

@@ -74,12 +74,18 @@ async def ETL(aiohttp_client: aiohttp.ClientSession,
     :param since_id:
     :return:
     """
+    # Extract
     x_res = await extract(aiohttp_client, since_id=since_id, max_tweets=MAX_TWEETS)
 
-    for s in x_res["statuses"]:
-        # logger.debug(f"{s['id_str']} - @{s['user']['screen_name']:15s}: {s['full_text']}")
-        # t_res = await transform(s)
-        await load(motor_client=motor_client, tweet=s)
+    # Load
+    tasks = [asyncio.ensure_future(load(motor_client=motor_client, tweet=s))
+             for s in x_res["statuses"]]
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    # for s in x_res["statuses"]:
+    #     # logger.debug(f"{s['id_str']} - @{s['user']['screen_name']:15s}: {s['full_text']}")
+    #     # t_res = await transform(s)
+    #     await load(motor_client=motor_client, tweet=s)
 
     return len(x_res["statuses"]), x_res["search_metadata"]["max_id"]
 
@@ -90,6 +96,7 @@ async def batch():
     aiohttp_client = aiohttp.ClientSession()
     while True:
         _, last_tweet_id = await ETL(aiohttp_client, motor_client, since_id=last_tweet_id)
+
     # await motor_client.close()
     # await aiohttp_client.close()
 

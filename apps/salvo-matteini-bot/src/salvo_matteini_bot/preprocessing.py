@@ -1,37 +1,38 @@
+
 import itertools
 import logging
-import json
-import string
-
-import numpy as np
-import pandas as pd
-import preprocessor
+import nltk
+import preprocessor  # todo remove (tweet-preprocessor)
 import re
 
-from os.path import join, dirname
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
 from numpy import unicode
-import nltk
+from keras.preprocessing.text import Tokenizer
+
+from salvo_matteini_bot import SEQ_LENGTH, START_TOKEN
 
 logger = logging.getLogger(__name__)
 
-# todo env variables
-INPUT_DIR = join(dirname(__file__), 'shared')
-EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.json')
-
-MAX_NWORDS_QUANTILE = 0.99
-MAX_NWORDS = 52
-START_TOKEN = 0  # non usare -1 (errore in embedding layer)
-
 
 def preprocess(tweets):
+    """
+
+    1. Filter tweets with too many words
+    2. Lowercase words
+    3. Remove punctuation
+    4. Normalizing text according to the `Italian Twitter word embedding <http://www.italianlp.it/download-italian-twitter-embeddings>`_
+    5. Substitute special entities (hashtags, emoji, ...)
+    6. Remove punctuation (again)
+    7. Tokenization based on italian language (e.g. l\'albero -> l\', albero)
+
+    :param tweets:
+    :return:
+    """
 
     m = tweets
 
     # filter
     # max_words = int(pd.Series(map(lambda x: len(x.split()), m)).quantile(MAX_NWORDS_QUANTILE))
-    m = filter(lambda x: len(x.split()) <= MAX_NWORDS, m)
+    m = filter(lambda x: len(x.split()) <= SEQ_LENGTH, m)
 
     # lowercase
     m = map(str.lower, m)
@@ -65,13 +66,55 @@ def preprocess(tweets):
     t = nltk.RegexpTokenizer(r"[dnl]['´`]|\w+|\$[\d\.]+|\S+")
     tokenizer = Tokenizer(t)
     list(map(lambda x: tokenizer.fit_on_texts(t.tokenize(x)), m))
-    m = map(lambda x: [START_TOKEN]+[tokenizer.word_index.get(w) for w in t.tokenize(x) if tokenizer.word_index.get(w)], m2)
+    m = map(lambda x: [START_TOKEN] + [tokenizer.word_index.get(w) for w in t.tokenize(x) if tokenizer.word_index.get(w)], m2)
 
     return m, tokenizer
 
 
+def normalize_text(word):
+    """
+    Numbers:
+    - Integer numbers between 0 and 2100 were kept as original
+    - Each integer number greater than 2100 is mapped in a string which represents the number of digits needed to store the number (ex: 10000 \-> DIGLEN\_5)
+    - Each digit in a string that is not convertible to a number must be converted with the following char: @Dg. This is an example of replacement (ex: 10,234 \-> @Dg@Dg,@Dg@Dg@Dg)
 
-def get_digits(text):
+    Words:
+    - A string starting with lower case character must be lowercased
+      (e.g.: (“aNtoNio” -> “antonio”), (“cane” -> “cane”))
+    - A string starting with an upcased character must be capitalized
+      (e.g.: (“CANE” -> “Cane”, “Antonio” -> “Antonio”))
+
+    :param word:
+    :return:
+    """
+    if "http" in word or ("." in word and "/" in word):
+        word = unicode("___URL___")
+        # word = '\\URL'
+        return word
+    if len(word) > 26:
+        return "__LONG-LONG__"
+        # return "\\LONGLONG"
+    new_word = _get_digits(word)
+    if new_word != word:
+        word = new_word
+    if word[0].isupper():
+        word = word.capitalize()
+    else:
+        word = word.lower()
+    return word
+
+
+def _get_digits(text):
+    """
+    1.  Integer numbers between 0 and 2100 were kept as original
+    2.  Each integer number greater than 2100 is mapped in a string which represents the number of digits needed to
+        store the number (e.g.: 10000 -> DIGLEN_5)
+    3.  Each digit in a string that is not convertible to a number must be converted with the following char: @Dg.
+        This is an example of replacement (ex: 10,234 -> @Dg@Dg,@Dg@Dg@Dg)
+
+    :param text:
+    :return:
+    """
     try:
         val = int(text)
     except:
@@ -85,25 +128,6 @@ def get_digits(text):
         # return "\\DIGLEN" + str(len(str(val)))
 
 
-def normalize_text(word):
-    if "http" in word or ("." in word and "/" in word):
-        word = unicode("___URL___")
-        # word = '\\URL'
-        return word
-    if len(word) > 26:
-        return "__LONG-LONG__"
-        # return "\\LONGLONG"
-    new_word = get_digits(word)
-    if new_word != word:
-        word = new_word
-    if word[0].isupper():
-        word = word.capitalize()
-    else:
-        word = word.lower()
-    return word
-
-
-
 def tokenize(sentence):
     # try:
     #     tokenizer = nltk.data.load('tokenizers/punkt/italian.pickle')
@@ -114,64 +138,27 @@ def tokenize(sentence):
     return t.tokenize(sentence)
 
 
-def filter_tweets(tweets):
-    # remove tweets with too many words
-    tweets['full_text_nwords'] = tweets.apply(lambda x: len(x['full_text'].split()), axis=1)
-    max_words = int(tweets['full_text_nwords'].quantile(MAX_NWORDS_QUANTILE))
-    return list(tweets[tweets['full_text_nwords'] <= max_words]['full_text']), max_words
-
-
-def encode_tweets(tweets):
-
-    # encode
-    tokenizer = Tokenizer()
-    tokenizer.fit_on_texts(tweets)
-    encoded_tweets = tokenizer.texts_to_sequences(tweets)
-
-    # # pad documents
-    # proc_encoded_tweets = pad_sequences(encoded_tweets, maxlen=max_words, padding='post')
-
-    encoded_tweets = [[START_TOKEN] + tweet for tweet in encoded_tweets]
-
-    return encoded_tweets, tokenizer
-
-
-# https://machinelearningmastery.com/use-word-embedding-layers-deep-learning-keras/
-# http://www.italianlp.it/resources/italian-word-embeddings/
-
-def get_t128_italiannlp_embedding(tokenizer: Tokenizer, n_words: int) -> np.array:
-
-    # t128 size: 1188949, 1027699 (lowercase)
-
-    # create a weight matrix for words in training docs
-    # initialize as random and not to zeros to avoid cosine similarity issues
-    embedding_matrix = np.random.uniform(low=-1, high=1, size=(n_words, 128))
-    # todo: constant size
-
-    # load the whole embedding into memory
-    # takes a while... (~1-2 min)
-    logger.info("Loading pre-trained word embedding in memory (~1-2 mins)...")
-    with open(EMBEDDING_PATH, 'r') as fin:
-        t128 = json.load(fin)
-
-    logger.info("Building embedding matrix...")
-    for word, i in tokenizer.word_index.items():
-        index = t128.get(word)
-        if index:
-            embedding_matrix[i] = index[:-1]
-
-    # sql_engine = create_engine(f"sqlite:///{WORD_EMBEDDING_PATH}")
-    # connection = sql_engine.raw_connection()
-    # for word, i in tokenizer.word_index.items():
-    #     res = t128[t128['key_lower'] == word.lower()]  # troppo lento
-    #     res = pd.read_sql(sql=f'select * from store where key = "{word}"', con=connection)
-    #     if len(res) == 1:
-    #         embedding_matrix[i] = res.drop(['key', 'ranking'], axis=1).values[0]
-
-    return embedding_matrix
-
-
-
+# def filter_tweets(tweets):
+#     # remove tweets with too many words
+#     tweets['full_text_nwords'] = tweets.apply(lambda x: len(x['full_text'].split()), axis=1)
+#     max_words = int(tweets['full_text_nwords'].quantile(MAX_NWORDS_QUANTILE))
+#     return list(tweets[tweets['full_text_nwords'] <= max_words]['full_text']), max_words
+#
+#
+# def encode_tweets(tweets):
+#
+#     # encode
+#     tokenizer = Tokenizer()
+#     tokenizer.fit_on_texts(tweets)
+#     encoded_tweets = tokenizer.texts_to_sequences(tweets)
+#
+#     # # pad documents
+#     # proc_encoded_tweets = pad_sequences(encoded_tweets, maxlen=max_words, padding='post')
+#
+#     encoded_tweets = [[START_TOKEN] + tweet for tweet in encoded_tweets]
+#
+#     return encoded_tweets, tokenizer
+#
 
 EMOJI_PREFIX = '/EMOJI'
 HASHTAG_PREFIX = '/HASHTAG'
@@ -180,6 +167,11 @@ MENTIONS_PREFIX = '/MENTION'
 
 
 def tweet_parsing(tweet):
+    """
+
+    :param tweet:
+    :return:
+    """
 
     # create the parser
     parser_tweet = preprocessor.parse(tweet)
@@ -210,10 +202,10 @@ def tweet_parsing(tweet):
 
 
 if __name__ == '__main__':
-    print(get_digits("15"))
-    print(get_digits("2099"))
-    print(get_digits("2100"))
-    print(get_digits("Ho visto 3000 manigoldi"))
+    print(_get_digits("15"))
+    print(_get_digits("2099"))
+    print(_get_digits("2100"))
+    print(_get_digits("Ho visto 3000 manigoldi"))
     print(normalize_text("aNtoNio"))
     print(normalize_text("cane"))
     print(normalize_text("CANE"))

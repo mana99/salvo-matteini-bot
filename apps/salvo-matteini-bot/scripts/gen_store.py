@@ -4,8 +4,8 @@ import pandas as pd
 from os.path import join, dirname
 from sqlalchemy import create_engine
 
-
-INPUT_DIR = join(dirname(__file__), 'shared')
+PRJ_DIR = join(dirname(__file__), '..')
+INPUT_DIR = join(PRJ_DIR, "input")
 WORD_EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.sqlite')
 WORD_EMBEDDING_SIZE = 128
 

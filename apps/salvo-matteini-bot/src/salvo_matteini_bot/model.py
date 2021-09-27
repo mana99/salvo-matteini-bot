@@ -1,17 +1,11 @@
 
 import logging
-import numpy as np
 import tensorflow as tf
 
-from os.path import join, dirname
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Embedding, Masking
 from keras.callbacks import ModelCheckpoint
 from tensorflow.python.keras.utils.losses_utils import ReductionV2
-
-INPUT_DIR = join(dirname(__file__), 'shared')
-WORD_EMBEDDING_PATH = join(INPUT_DIR, 'twitter128.sqlite')
-MODEL_PATH = join(INPUT_DIR, 'model.h5')
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +22,7 @@ def cosine_similarity(a, b):
     return tf.losses.CosineSimilarity(a, b)
 
 
-
 # X.shape: (n_examples, n_batch, 1)
-
-
 def compile_model(X_train, y_train, *, embedding_matrix):
 
     # print("train len {}, validation len {}".format(len(X_train), len(X_valid)))

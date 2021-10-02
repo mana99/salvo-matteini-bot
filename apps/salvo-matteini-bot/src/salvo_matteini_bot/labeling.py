@@ -4,7 +4,7 @@ import numpy as np
 from typing import List
 
 
-def get_features_labels(tweets: List[List], n_vocab, seq_length, embedding_matrix):
+def get_features_labels(tweets: List[List], seq_length, embedding_matrix):
     """
     Get the features/label pairs from the list of tweets. Each sequence of ``seq_length`` words from the flattened
     corpus of tweets will be considered as the input for the following word.
@@ -16,6 +16,8 @@ def get_features_labels(tweets: List[List], n_vocab, seq_length, embedding_matri
     :param embedding_matrix:
     :return:
     """
+
+    n_vocab = embedding_matrix.shape[0]
 
     tweets_flat = [token for tweet in tweets for token in tweet]
 

@@ -1,9 +1,10 @@
 
 import logging
-import json
+import ujson
 import numpy as np
 
 from keras.preprocessing.text import Tokenizer
+from tqdm import tqdm
 
 from salvo_matteini_bot import EMBEDDING_PATH
 
@@ -12,23 +13,25 @@ logger = logging.getLogger(__name__)
 
 # https://machinelearningmastery.com/use-word-embedding-layers-deep-learning-keras/
 # http://www.italianlp.it/resources/italian-word-embeddings/
-def get_t128_italiannlp_embedding(tokenizer: Tokenizer, n_words: int) -> np.array:
+def get_t128_italiannlp_embedding(tokenizer: Tokenizer) -> np.array:
     """
-    Load the 128-sized italian word embedding trained on tweets by the Italian Natural Language Processing Lab.
+    Load the 128-sized italian word embedding trained on tweets by the Italian Natural Language Processing  Lab [1]
+    (see http://www.italianlp.it/resources/italian-word-embeddings/) and build the embedding matrix for the
+    the current tokenization.
 
-    http://www.italianlp.it/resources/italian-word-embeddings/
+    ---
 
-    Cimino A., De Mattei L., Dell’Orletta F. (2018) "[*Multi-task Learning in Deep Neural Networks at EVALITA
-    2018*](http://ceur-ws.org/Vol-2263/paper013.pdf)". In Proceedings of EVALITA ’18, Evaluation of NLP and Speech
-    Tools for Italian, 12-13 December, Turin, Italy.
+    [1] Cimino A., De Mattei L., Dell’Orletta F. (2018) "`Multi-task Learning in Deep Neural Networks at EVALITA 2018
+    <http://ceur-ws.org/Vol-2263/paper013.pdf>`_". In Proceedings of EVALITA ’18, Evaluation of NLP and Speech Tools
+    for Italian, 12-13 December, Turin, Italy.
 
-
-    :param tokenizer:
-    :param n_words:
-    :return: embedding matrix
+    :param tokenizer: the tokenizer object
+    :return: the (n_words x 128) embedding matrix
     """
 
     # t128 size: 1188949, 1027699 (lowercase)
+
+    n_words = len(tokenizer.word_index) + 1
 
     # create a weight matrix for words in training docs
     # initialize as random and not to zeros to avoid cosine similarity issues
@@ -39,10 +42,10 @@ def get_t128_italiannlp_embedding(tokenizer: Tokenizer, n_words: int) -> np.arra
     # takes a while... (~1-2 min)
     logger.info("Loading pre-trained word embedding in memory (~1-2 mins)...")
     with open(EMBEDDING_PATH, 'r') as fin:
-        t128 = json.load(fin)
+        t128 = ujson.load(fin)
 
     logger.info("Building embedding matrix...")
-    for word, i in tokenizer.word_index.items():
+    for word, i in tqdm(tokenizer.word_index.items()):
         index = t128.get(word)
         if index:
             embedding_matrix[i] = index[:-1]

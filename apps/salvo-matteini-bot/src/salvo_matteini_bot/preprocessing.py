@@ -8,9 +8,11 @@ import re
 from numpy import unicode
 from keras.preprocessing.text import Tokenizer
 
-from salvo_matteini_bot import SEQ_LENGTH, START_TOKEN
+from salvo_matteini_bot import SEQ_LENGTH
 
 logger = logging.getLogger(__name__)
+
+START_TOKEN = 0  # non usare -1 (errore in embedding layer)
 
 
 def preprocess(tweets):

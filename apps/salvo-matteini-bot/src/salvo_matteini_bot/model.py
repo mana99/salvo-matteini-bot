@@ -61,7 +61,7 @@ def compile_model(X_train, y_train, *, embedding_matrix):
     # model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # define the checkpoint
-    filepath = "tmp/weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
+    filepath = "/tmp/weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
     checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
     # early_stopping = EarlyStopping(monitor='val_loss', patience=5)
     callbacks = [checkpoint]

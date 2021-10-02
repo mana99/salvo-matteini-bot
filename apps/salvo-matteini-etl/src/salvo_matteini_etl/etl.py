@@ -16,8 +16,6 @@ logger = logging.getLogger(__name__)
 RATE_LIMIT = 1
 PERIOD = 30  # in seconds  # 180 / 15 min = 1 / 5 s
 MAX_TWEETS = 100
-MONGO_DB_NAME = 'twitter'
-MONGO_COLL_NAME = 'salvo-matteini-bot'
 
 
 # initialize env
@@ -26,6 +24,8 @@ TWITTER_ACCESS_TOKEN_SECRET = environ["TWITTER_ACCESS_TOKEN_SECRET"]
 TWITTER_CONSUMER_KEY = environ["TWITTER_CONSUMER_KEY"]
 TWITTER_CONSUMER_KEY_SECRET = environ["TWITTER_CONSUMER_KEY_SECRET"]
 MONGO_URL = environ["MONGO_URL"]
+MONGO_DB_NAME = environ["MONGO_DB_NAME"]
+MONGO_COLL_NAME = environ["MONGO_COLL_NAME"]
 
 # throttler
 throttler = Throttler(rate_limit=RATE_LIMIT, period=PERIOD)

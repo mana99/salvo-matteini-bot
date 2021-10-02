@@ -1,7 +1,10 @@
 
 import logging
+import random
 
 from random import shuffle
+
+from salvo_matteini_bot import RANDOM_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +24,19 @@ def partition_tweets(tweets, train_valid_test):
         train, valid, test = tuple(x / (train + valid + test) for x in (train, valid, test))
 
     logger.info("Shuffling tweets...")
-    shuffled_tweets = shuffle(tweets)  # todo add random seed
+    random.Random(RANDOM_STATE).shuffle(tweets)
     # 25 tweets for scoring
     score_tweets = []
     for i in range(25):
-        score_tweets.append(shuffled_tweets.pop())
+        score_tweets.append(tweets.pop())
     # train, validation, test sets
-    train_n, test_n, valid_n = tuple(int(x * len(shuffled_tweets)) for x in (train, valid, test))
+    train_n, test_n, valid_n = tuple(int(x * len(tweets)) for x in (train, valid, test))
 
-    return shuffled_tweets[:train_n], \
-           shuffled_tweets[train_n:train_n+valid_n], \
-           shuffled_tweets[train_n+valid_n:], \
-           score_tweets
+    output = {
+        "train": tweets[:train_n],
+        "validation": tweets[train_n:train_n+valid_n],
+        "test": tweets[train_n+valid_n:],
+        "score": score_tweets
+    }
+
+    return output
